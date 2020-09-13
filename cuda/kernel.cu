@@ -44,7 +44,7 @@ __device__ void generated()
 //vector add function
 __global__ void addKernel(int *a, int *b, int* c)
 {
-    int i = blockIdx.x;
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
     if (i < N)
     {
         c[i] = a[i] + b[i];
@@ -54,7 +54,7 @@ __global__ void addKernel(int *a, int *b, int* c)
 //can be called from GPU and CPU
 __global__ void vectorGenerateKernel(int* a, int* b)
 {
-    int i = blockIdx.x;
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
     if (i < N)
     {
         a[i] = -i;
