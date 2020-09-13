@@ -45,9 +45,10 @@ __device__ void generated()
 __global__ void addKernel(int *a, int *b, int* c)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
-    if (i < N)
+    while (i < N)
     {
         c[i] = a[i] + b[i];
+        i += blockDim.x * gridDim.x;
     }
 }
 
@@ -55,10 +56,11 @@ __global__ void addKernel(int *a, int *b, int* c)
 __global__ void vectorGenerateKernel(int* a, int* b)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
-    if (i < N)
+    while (i < N)
     {
         a[i] = -i;
         b[i] = i * i;
+        i += blockDim.x * gridDim.x;
     }
 }
 
