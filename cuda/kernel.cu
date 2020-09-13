@@ -35,6 +35,12 @@ void printDevProp()
     return;
 }
 
+//can be called only from GPU function
+__device__ void generated()
+{
+    printf("generated\n");
+}
+
 //vector add function
 __global__ void addKernel(int *a, int *b, int* c)
 {
@@ -45,6 +51,7 @@ __global__ void addKernel(int *a, int *b, int* c)
     }
 }
 
+//can be called from GPU and CPU
 __global__ void vectorGenerateKernel(int* a, int* b)
 {
     int i = blockIdx.x;
