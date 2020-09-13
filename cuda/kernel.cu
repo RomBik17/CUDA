@@ -72,9 +72,9 @@ int main()
     cudaMalloc((void**)&dev_b, N * sizeof(int));
     cudaMalloc((void**)&dev_c, N * sizeof(int));
 
-    vectorGenerateKernel << <N, 1 >> > (dev_a, dev_b);
+    vectorGenerateKernel << <N / 1, 1 >> > (dev_a, dev_b);
 
-    addKernel << <N, 1 >> > (dev_a, dev_b, dev_c);
+    addKernel << <N / 1, 1 >> > (dev_a, dev_b, dev_c);
 
     cudaMemcpy(c, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost);
     
