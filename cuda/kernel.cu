@@ -1,13 +1,9 @@
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-
 #include <stdio.h>
 
-__global__ void kernel(int a, int b, int* c)
-{
-    *c = a + b;
-}
+#define N 10
 
 void printDevProp()
 {
@@ -39,15 +35,44 @@ void printDevProp()
     return;
 }
 
+//vector add function
+__global__ void addKernel(int *a, int *b, int* c)
+{
+    int tID = blockIdx.x;
+    if (tID < N)
+        c[tID] = a[tID] + b[tID];
+}
+
 int main()
 {
     printDevProp();
-    int c;
-    int* dev_c;
-    cudaMalloc((void**)&dev_c, sizeof(int));
-    kernel << <1, 1 >> > (2, 7, dev_c);
-    cudaMemcpy(&c, dev_c, sizeof(int), cudaMemcpyDeviceToHost);
-    printf("2+7=%d\n", c);
+    int a[N], b[N], c[N];
+    int *dev_a, *dev_b, *dev_c;
+
+    cudaMalloc((void**)&dev_a, N * sizeof(int));
+    cudaMalloc((void**)&dev_b, N * sizeof(int));
+    cudaMalloc((void**)&dev_c, N * sizeof(int));
+
+    for (int i = 0; i < N; ++i)
+    {
+        a[i] = -i;
+        b[i] = i * i;
+    }
+
+    cudaMemcpy(dev_a, a, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b, b, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    addKernel << <N, 1 >> > (dev_a, dev_b, dev_c);
+
+    cudaMemcpy(c, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost);
+    
+    for (int i = 0; i < N; ++i)
+    {
+        printf("%d\n", c[i]);
+    }
+
+    cudaFree(dev_a);
+    cudaFree(dev_b);
     cudaFree(dev_c);
     return 0;
 }
