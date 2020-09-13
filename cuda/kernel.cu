@@ -38,9 +38,21 @@ void printDevProp()
 //vector add function
 __global__ void addKernel(int *a, int *b, int* c)
 {
-    int tID = blockIdx.x;
-    if (tID < N)
-        c[tID] = a[tID] + b[tID];
+    int i = blockIdx.x;
+    if (i < N)
+    {
+        c[i] = a[i] + b[i];
+    }
+}
+
+__global__ void vectorGenerateKernel(int* a, int* b)
+{
+    int i = blockIdx.x;
+    if (i < N)
+    {
+        a[i] = -i;
+        b[i] = i * i;
+    }
 }
 
 int main()
@@ -53,14 +65,7 @@ int main()
     cudaMalloc((void**)&dev_b, N * sizeof(int));
     cudaMalloc((void**)&dev_c, N * sizeof(int));
 
-    for (int i = 0; i < N; ++i)
-    {
-        a[i] = -i;
-        b[i] = i * i;
-    }
-
-    cudaMemcpy(dev_a, a, N * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(dev_b, b, N * sizeof(int), cudaMemcpyHostToDevice);
+    vectorGenerateKernel << <N, 1 >> > (dev_a, dev_b);
 
     addKernel << <N, 1 >> > (dev_a, dev_b, dev_c);
 
