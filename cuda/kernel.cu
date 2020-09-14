@@ -1,9 +1,15 @@
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include <stdio.h>
 
-#define N 10
+#include <stdio.h>
+#include <stdlib.h>
+
+#define N 1024
+#define imin(a, b) ((a < b) ? a : b)
+
+const int threadsPerBlock = 256;
+const int blocksPerGrid = imin(32, (N + threadsPerBlock - 1) / threadsPerBlock);
 
 void printDevProp()
 {
@@ -58,35 +64,71 @@ __global__ void vectorGenerateKernel(int* a, int* b)
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     while (i < N)
     {
-        a[i] = -i;
-        b[i] = i * i;
+        a[i] = i;
+        b[i] = i * 2;
         i += blockDim.x * gridDim.x;
     }
+}
+
+__global__ void dotKernel(int* a, int* b, int* c)
+{
+    
+    __shared__ int cache[threadsPerBlock];
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
+    int cacheIndex = threadIdx.x;
+    int temp = 0;
+    while (i < N)
+    {
+        temp += a[i] * b[i];
+        i += blockDim.x * gridDim.x;
+    }
+    cache[cacheIndex] = temp;
+
+    __syncthreads();
+
+    int j = blockDim.x / 2;
+    while (j != 0)
+    {
+        if (cacheIndex < j) cache[cacheIndex] += cache[cacheIndex + 1];
+        __syncthreads();
+        j /= 2;
+    }
+
+    if (cacheIndex == 0) c[blockIdx.x] = cache[0];
 }
 
 int main()
 {
     printDevProp();
-    int a[N], b[N], c[N];
-    int *dev_a, *dev_b, *dev_c;
+    int c, *partial_c;
+    int *dev_a, *dev_b, *dev_partial_c;
+
+    c = 0;
+    partial_c = (int *)malloc(blocksPerGrid * sizeof(int));
 
     cudaMalloc((void**)&dev_a, N * sizeof(int));
     cudaMalloc((void**)&dev_b, N * sizeof(int));
-    cudaMalloc((void**)&dev_c, N * sizeof(int));
+    cudaMalloc((void**)&dev_partial_c, blocksPerGrid * sizeof(int));
 
-    vectorGenerateKernel << <N / 1, 1 >> > (dev_a, dev_b);
+    vectorGenerateKernel << <blocksPerGrid, threadsPerBlock >> > (dev_a, dev_b);
 
-    addKernel << <N / 1, 1 >> > (dev_a, dev_b, dev_c);
+    printf("generated");
+    //addKernel << <blocksPerGrid, threadsPerBlock >> > (dev_a, dev_b, dev_c);
+    dotKernel << <blocksPerGrid, threadsPerBlock >> > (dev_a, dev_b, dev_partial_c);
 
-    cudaMemcpy(c, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(partial_c, dev_partial_c, blocksPerGrid * sizeof(int), cudaMemcpyDeviceToHost);
     
-    for (int i = 0; i < N; ++i)
+    for (int i = 0; i < blocksPerGrid; ++i)
     {
-        printf("%d\n", c[i]);
+        c += partial_c[i];
     }
+
+    printf("dot %d", c);
 
     cudaFree(dev_a);
     cudaFree(dev_b);
-    cudaFree(dev_c);
+    cudaFree(dev_partial_c);
+
+    delete[] partial_c;
     return 0;
 }
